@@ -638,7 +638,7 @@ def update_scoreboard(canvas):
 						else:
 							weather_icon_path = weather_icon_dir + 'clear_night.png'
 					elif weather_desc == 'Mostly cloudy' or weather_desc == 'Mostly Cloudy' or \
-						weather_desc == 'Partly Cloudy' or weather_desc == 'Partly cloudy':
+						weather_desc == 'Partly Cloudy' or weather_desc == 'Partly cloudy' or weather_desc == "Partly sunny":
 						if is_it_night == False:
 							weather_icon_path = weather_icon_dir + 'cloudy_day.png'
 						else: 
