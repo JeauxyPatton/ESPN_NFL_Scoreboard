@@ -143,6 +143,67 @@ def sort_live_games(scoreboard_games):
 			scoreboard_games_sorted.append(game_sorted_by_qtr)
 	return scoreboard_games_sorted
 
+def make_weather(weather, is_it_night):
+	condition = weather["displayValue"]
+	numbers_count = 0
+	for char in condition:
+		if char.isdigit():
+			numbers_count += 1
+	if numbers_count > 0:
+		condition = weather["conditionId"]
+		numbers_count2 = 0
+		for char in condition:
+			if char.isdigit():
+				numbers_count2 += 1
+		if numbers_count2 > 0:
+			condition = 'Unknown'
+
+	weather_desc = condition
+	if weather_desc in ['Fair', 'Mostly clear', 'Mostly Clear', 'Mostly Sunny',
+		'Mostly sunny', 'Fog', 'Foggy']:
+		if is_it_night == False:
+			weather_icon_path = weather_icon_dir + 'fair.png'
+		else: 
+			weather_icon_path = weather_icon_dir + 'fair_night.png'
+	elif weather_desc == 'Clear' or weather_desc == 'Sunny':
+		if is_it_night == False:
+			weather_icon_path = weather_icon_dir + 'sunny.png'
+		else:
+			weather_icon_path = weather_icon_dir + 'clear_night.png'
+	elif weather_desc in ['Cloudy', 'Partly Cloudy', 'Partly cloudy', 'Mostly cloudy',
+		'Mostly Cloudy', 'Intermittent clouds', 'Intermittent Clouds', 'Clouds', 'Cloud']:
+		if is_it_night == False:
+			weather_icon_path = weather_icon_dir + 'cloudy_day.png'
+		else: 
+			weather_icon_path = weather_icon_dir + 'cloudy_night.png'
+	elif weather_desc in ['Light Rain', 'Light rain', 'Drizzle', 'Light Rain Shower', 'Light Rain Showers',
+		'Light rain shower', 'Light rain showers']:
+		if is_it_night == False:
+			weather_icon_path = weather_icon_dir + 'light_rain.png'
+		else: 
+			weather_icon_path = weather_icon_dir + 'light_rain_night.png'
+	elif weather_desc == 'Overcast':
+		weather_icon_path = weather_icon_dir + 'overcast.png'
+	elif weather_desc in ['Rain', 'Rain Shower', 'Rain Showers', 'Showers', 'Rain shower', 'Rain showers']:
+		weather_icon_path = weather_icon_dir + 'rainy.png'
+	elif weather_desc in ['Heavy Rain Shower', 'Heavy Rain', 'Heavy rain', 'Heavy rain shower',
+		'Heavy rain showers', 'Heavy Rain Showers']:
+		weather_icon_path = weather_icon_dir + 'heavy_rain.png'
+	elif weather_desc in ['Thunderstorm', 'Thunderstorms', 'Storms', 'Stormy', 'Thunder storms', 
+		'Thunder storm', 'Thunder Storm', 'Thunder Storms']:
+		weather_icon_path = weather_icon_dir + 'thunderstorm.png'
+		weather_desc = 'Thunderstorms'
+	elif weather_desc == 'Unknown':
+		weather_icon_path = weather_icon_dir + 'missing_V2.png'
+	else:
+		if is_it_night == False:
+			weather_icon_path = weather_icon_dir + 'sunny.png'
+		else: 
+			weather_icon_path = weather_icon_dir + 'clear_night.png'
+
+	return weather_desc, weather_icon_path
+
+
 def refresh_canvas(canvas):
 	update_scoreboard(canvas)
 	canvas.after(60000, refresh_canvas, canvas)
@@ -300,23 +361,51 @@ def update_scoreboard(canvas):
 					is_it_night = True
 				else:
 					is_it_night = False
+				char_limit = 50
 				if game_status != "Final":
-					situation = game_info["situation"]
-					if "possession" in situation:
-						team_in_possession = situation["possession"]
-						if team_in_possession == home_team_id:
-							possession = 'home'
-						elif team_in_possession == away_team_id:
-							possession = 'away'
+					if "situation" in game_info:
+						situation = game_info["situation"]
+						if "possession" in situation:
+							team_in_possession = situation["possession"]
+							if team_in_possession == home_team_id:
+								possession = 'home'
+							elif team_in_possession == away_team_id:
+								possession = 'away'
+						else:
+							possession = 'none'
+						if "downDistanceText" in situation:
+							down_and_distance = situation["downDistanceText"]
+						else:
+							down_and_distance = ''
+						if "lastPlay" in situation:
+							last_play = situation["lastPlay"]
+							last_play_text = last_play["text"]
+							if len(last_play_text) > char_limit:
+								new_last_play = ""
+								is_break_needed = False
+								for i, letter in enumerate(last_play_text):
+									if i % char_limit == 0 and new_last_play != "":
+										if letter == " ":
+											new_last_play += "\n		          "
+											is_break_needed = False
+										else:
+											is_break_needed = True
+									elif is_break_needed == True and letter == " ":
+										new_last_play += "\n		           "
+										is_break_needed = False
+									new_last_play +=letter
+
+							else:
+								new_last_play = last_play_text
+						else:
+							last_play_text = " Missing"
 					else:
+						situation = None
 						possession = 'none'
-					down_and_distance = situation["downDistanceText"]
 					home_team_points = home_team_info["score"]
 					home_team_record = home_team_info["records"][0]["summary"]
 					away_team_points = away_team_info["score"]
 					away_team_record = away_team_info["records"][0]["summary"]
-					last_play = situation["lastPlay"]
-					last_play_text = last_play["text"]
 
 					venue_name = venue_info["fullName"]
 					indoor_var = venue_info["indoor"]
@@ -325,51 +414,20 @@ def update_scoreboard(canvas):
 						add_weather = False
 					else:
 						indoor_text = ""
-						add_weather = True
+						if "weather" in game:
+							add_weather = True
+						else:
+							add_weather = False
 
 					if add_weather == True:
 						weather = game["weather"]
-						print(weather)
-						condition = weather["conditionId"]
-						weather_temp = weather["temperature"]
-						print('	Weather: ' + condition + ', ' + str(weather_temp) + '°F')
-						weather_desc = condition
-						if weather_desc == 'Fair':
-							if is_it_night == False:
-								weather_icon_path = weather_icon_dir + 'fair.png'
-							else: 
-								weather_icon_path = weather_icon_dir + 'fair_night.png'
-						elif weather_desc == 'Clear':
-							if is_it_night == False:
-								weather_icon_path = weather_icon_dir + 'sunny.png'
-							else:
-								weather_icon_path = weather_icon_dir + 'clear_night.png'
-						elif weather_desc == 'Cloudy':
-							if is_it_night == False:
-								weather_icon_path = weather_icon_dir + 'cloudy_day.png'
-							else: 
-								weather_icon_path = weather_icon_dir + 'cloudy_night.png'
-						elif weather_desc == 'Light Rain':
-							if is_it_night == False:
-								weather_icon_path = weather_icon_dir + 'light_rain.png'
-							else: 
-								weather_icon_path = weather_icon_dir + 'light_rain_night.png'
-						elif weather_desc == 'Overcast':
-							weather_icon_path = weather_icon_dir + 'overcast.png'
-						elif weather_desc == 'Rain' or weather_desc == 'Rain Shower':
-							weather_icon_path = weather_icon_dir + 'rainy.png'
-						elif weather_desc == 'Heavy Rain Shower' or weather_desc == 'Heavy Rain':
-							weather_icon_path = weather_icon_dir + 'heavy_rain.png'
-						elif weather_desc == 'Thunderstorm':
-							weather_icon_path = weather_icon_dir + 'thunderstorm.png'
-							weather_desc = 'Thunderstorms'
-						elif weather_desc == 'Unknown':
-							weather_icon_path = weather_icon_dir + 'missing_V2.png'
+						if "temperature" in weather:
+							weather_temp = weather["temperature"]
 						else:
-							if is_it_night == False:
-								weather_icon_path = weather_icon_dir + 'sunny.png'
-							else: 
-								weather_icon_path = weather_icon_dir + 'clear_night.png'
+							weather_temp = 'Missing'
+
+						weather_desc, weather_icon_path = make_weather(weather, is_it_night)
+
 						weather_icon = Image.open(weather_icon_path)
 						weather_img = ImageTk.PhotoImage(weather_icon.resize((26, 26), Image.LANCZOS))
 						if weather_desc == 'Unknown':
@@ -380,47 +438,63 @@ def update_scoreboard(canvas):
 								+ ' ', anchor = 'nw', 
 								font=(universal_font, 12), bg=standard_bg_color, fg=universal_font_color, image = weather_img, compound=tk.RIGHT)
 						label_weather.image = weather_img
+					
 					current_total_pts = away_team_points + home_team_points
+
+					char_limit = 50
+					away_team_name_length = len(away_team_name_short)
+					home_team_name_length = len(home_team_name_short)
+					num_away_spaces = char_limit - away_team_name_length
+					num_home_spaces = char_limit - (home_team_name_length +6)
+
 					if possession == 'away':
 						#num_away_spaces += -15
 						label_awayteam = tk.Label(content_frame, text = "    " + away_team_name_short + 
-							" " + str(away_team_points) + "  " + tv_channel,
-							bg=standard_bg_color, fg=universal_font_color, anchor='nw', image = football, font=(universal_font, 14, "bold"),
+							" (" + away_team_record + ") " +num_away_spaces*" " + str(away_team_points) + 
+							"	(" + tv_channel + ")", bg=standard_bg_color, fg=universal_font_color, 
+							anchor='nw', image = football, font=(universal_font, 14, "bold"),
 							compound=tk.LEFT)
 						label_awayteam.pack(fill=tk.X)
 						label_awayteam.image = football
 					else:
+						if possession != 'home':
+							num_away_spaces += -3
+						num_away_spaces += 2
 						label_awayteam = tk.Label(content_frame, text = "         " +
-							away_team_name_short + " " + str(away_team_points) + "  " + tv_channel, 
-							anchor='nw', font=(universal_font, 14, "bold"), bg=standard_bg_color, fg=universal_font_color)
+							away_team_name_short + " (" + away_team_record + ") " + num_away_spaces*" " +
+							str(away_team_points) + "	(" + tv_channel + ")", 
+							anchor='nw', font=(universal_font, 14, "bold"), bg=standard_bg_color, 
+							fg=universal_font_color)
 						label_awayteam.pack(fill=tk.X)
 					if possession == 'home':
 						label_hometeam = tk.Label(content_frame, text = "  @ " +
-							home_team_name_short + " " + str(home_team_points), 
-							bg=standard_bg_color, anchor='nw', fg=universal_font_color, image = football, 
-							font=(universal_font, 14, "bold"), compound=tk.LEFT)
+							home_team_name_short + " (" + home_team_record + ") " + num_home_spaces*" " +
+							str(home_team_points), bg=standard_bg_color, anchor='nw', 
+							fg=universal_font_color, image = football, font=(universal_font, 14, "bold"), 
+							compound=tk.LEFT)
 						label_hometeam.pack(fill=tk.X)
 						label_hometeam.image = football
 					else:
-						label_hometeam = tk.Label(content_frame, text = "      @ " +
-							home_team_name_short + " " + str(home_team_points),
-							bg=standard_bg_color, fg=universal_font_color,anchor='nw', font=(universal_font, 14, "bold"))
+						label_hometeam = tk.Label(content_frame, text = "    @ " +
+							home_team_name_short + " (" + home_team_record + ") " + num_home_spaces*" " + 
+							str(home_team_points), bg=standard_bg_color, fg=universal_font_color,
+							anchor='nw', font=(universal_font, 14, "bold"))
 						label_hometeam.pack(fill=tk.X)
-					if situation != '':
+					if situation != None:
 						if '& Goal' in down_and_distance:
 							label_qtr = tk.Label(content_frame, text = '	' + clock_text_line +', ' + down_and_distance,
 								anchor='w', bg=standard_bg_color, fg='red', font=(universal_font, 14, 'bold'))
 						else:
 							label_qtr = tk.Label(content_frame, text = '	' + clock_text_line + ', ' + down_and_distance,
 								anchor='w', bg=standard_bg_color, fg=universal_font_color, font=(universal_font, 14))
+							label_qtr.pack(fill=tk.X)
+							label_lastplay = tk.Label(content_frame, text = '		Last play: ' + new_last_play, anchor='nw', 
+								bg=standard_bg_color, fg=universal_font_color, font=(universal_font, 12))
+							label_lastplay.pack(fill=tk.X)
 					else:
 						label_qtr = tk.Label(content_frame, text = '	' + clock_text_line,
 							anchor='w', bg=standard_bg_color, fg=universal_font_color, font=(universal_font, 14))
-					label_qtr.pack(fill=tk.X)
-
-					label_lastplay = tk.Label(content_frame, text = '		Last play: ' + last_play_text, anchor='nw', 
-						bg=standard_bg_color, fg=universal_font_color, font=(universal_font, 12))
-					label_lastplay.pack(fill=tk.X)
+						label_qtr.pack(fill=tk.X)
 
 					label_venue = tk.Label(content_frame, text = '		' + venue_name + indoor_text, anchor='nw', 
 						bg=standard_bg_color, fg=universal_font_color, font=(universal_font, 12))
@@ -493,11 +567,12 @@ def update_scoreboard(canvas):
 						point_spread = betting_info["details"]
 
 					if home_ML != None:
-						betting_line = ' [' + home_ML + ']'
+						betting_line = '[' + home_ML + ']'
 					else:
 						betting_line = '' 
 				else:
 					add_betting_info = False
+				
 				venue_name = venue_info["fullName"]
 				indoor_var = venue_info["indoor"]
 				if indoor_var == True:
@@ -505,15 +580,16 @@ def update_scoreboard(canvas):
 					add_weather = False
 				else:
 					indoor_text = ""
-					add_weather = True
+					if "weather" in game:
+						add_weather = True
+					else:
+						add_weather = False
 
 				home_team_info = game_info["competitors"][0]
-				home_score = home_team_info["score"]
 				home_team_name_short = home_team_info["team"]["displayName"]
 				home_team_id = home_team_info["id"]
 
 				away_team_info = game_info["competitors"][1]
-				away_score = away_team_info["score"]
 				away_team_name_short = away_team_info["team"]["displayName"]
 				away_team_id = away_team_info["id"]
 				
@@ -559,11 +635,11 @@ def update_scoreboard(canvas):
 				
 				if add_betting_info == True:
 					label_game_teams = tk.Label(content_frame, text = " " + away_team_name_short + 
-						" @ " + home_team_name_short + " " + betting_line + " - " + 
+						"  @  " + home_team_name_short + " " + betting_line + " - " + 
 						adjusted_start_datetime_text, anchor='w', fg=universal_font_color, font=(universal_font, 14), bg=standard_bg_color)						
 				else:
 					label_game_teams = tk.Label(content_frame, text = " " + away_team_name_short + 
-							" @ " + home_team_name_short + " - " + adjusted_start_datetime_text, 
+							"  @  " + home_team_name_short + " - " + adjusted_start_datetime_text, 
 							anchor='w', fg=universal_font_color, font=(universal_font, 14), bg=standard_bg_color)
 				label_game_teams.pack(fill=tk.X)
 				
@@ -589,48 +665,11 @@ def update_scoreboard(canvas):
 
 				if add_weather == True:
 					weather = game["weather"]
-					#print(weather)
-					condition = weather["displayValue"]
-					weather_temp = weather["temperature"]
-					#print('	Weather: ' + condition + ', ' + str(weather_temp) + '°F')
-					weather_desc = condition
-					if weather_desc == 'Fair' or weather_desc == 'Mostly sunny':
-						if is_it_night == False:
-							weather_icon_path = weather_icon_dir + 'fair.png'
-						else: 
-							weather_icon_path = weather_icon_dir + 'fair_night.png'
-					elif weather_desc == 'Clear':
-						if is_it_night == False:
-							weather_icon_path = weather_icon_dir + 'sunny.png'
-						else:
-							weather_icon_path = weather_icon_dir + 'clear_night.png'
-					elif weather_desc == 'Mostly cloudy' or weather_desc == 'Mostly Cloudy' or \
-						weather_desc == 'Partly Cloudy' or weather_desc == 'Partly cloudy' or weather_desc == "Partly sunny":
-						if is_it_night == False:
-							weather_icon_path = weather_icon_dir + 'cloudy_day.png'
-						else: 
-							weather_icon_path = weather_icon_dir + 'cloudy_night.png'
-					elif weather_desc == 'Light Rain':
-						if is_it_night == False:
-							weather_icon_path = weather_icon_dir + 'light_rain.png'
-						else: 
-							weather_icon_path = weather_icon_dir + 'light_rain_night.png'
-					elif weather_desc == 'Overcast' or weather_desc == 'Cloudy':
-						weather_icon_path = weather_icon_dir + 'overcast.png'
-					elif weather_desc == 'Rain' or weather_desc == 'Rain Shower':
-						weather_icon_path = weather_icon_dir + 'rainy.png'
-					elif weather_desc == 'Heavy Rain Shower' or weather_desc == 'Heavy Rain':
-						weather_icon_path = weather_icon_dir + 'heavy_rain.png'
-					elif weather_desc == 'Thunderstorm':
-						weather_icon_path = weather_icon_dir + 'thunderstorm.png'
-						weather_desc = 'Thunderstorms'
-					elif weather_desc == 'Unknown':
-						weather_icon_path = weather_icon_dir + 'missing_V2.png'
+					if "temperature" in weather:
+						weather_temp = weather["temperature"]
 					else:
-						if is_it_night == False:
-							weather_icon_path = weather_icon_dir + 'sunny.png'
-						else: 
-							weather_icon_path = weather_icon_dir + 'clear_night.png'
+						weather_temp = 'Missing'
+					weather_desc, weather_icon_path = make_weather(weather, is_it_night)
 					weather_icon = Image.open(weather_icon_path)
 					weather_img = ImageTk.PhotoImage(weather_icon.resize((26, 26), Image.LANCZOS))
 					if weather_desc == 'Unknown':
