@@ -167,25 +167,25 @@ def update_scoreboard(canvas):
 		response.raise_for_status()
 		#print(response.text)
 	except requests.exceptions.RequestException as e:
-		print("Error making request: " + e)
+		print("Error making request: " + str(e))
 
 	json_data = response.json()
 	schedule = json_data["content"]["schedule"]
 
 	# # #save temporary json file
-	output_file_path = '/mnt/c/Users/bjig2/Documents/Football/test_nfl_data.json'
-	# try:
-	# 	with open(output_file_path, 'w') as f:
-	# 		json.dump(json_data, f, indent=4)
-	# 	print(f"Data successfully saved to {output_file_path}")
-	# except IOError as e:
-	# 	print(f"Error writing to file: {e}")
+	output_file_path = '/mnt/c/Users/bjig2/Documents/Football/test_nfl_data_V2.json'
+	try:
+		with open(output_file_path, 'w') as f:
+			json.dump(json_data, f, indent=4)
+		print(f"Data successfully saved to {output_file_path}")
+	except IOError as e:
+		print(f"Error writing to file: {e}")
 
 
-	# with open(output_file_path, 'r') as data_file:
-	# 	json_data = json.load(data_file)
+	with open(output_file_path, 'r') as data_file:
+		json_data = json.load(data_file)
 	
-	# schedule = json_data["content"]["schedule"]
+	schedule = json_data["content"]["schedule"]
 
 	completed_games = []
 	upcoming_games = []
@@ -315,20 +315,8 @@ def update_scoreboard(canvas):
 					home_team_record = home_team_info["records"][0]["summary"]
 					away_team_points = away_team_info["score"]
 					away_team_record = away_team_info["records"][0]["summary"]
-					# if possession == 'home':
-					# 	print('<=> ' + home_team_points + ' - ' + home_team_name_short + ' (' + home_team_record + ')')
-					# 	print('    ' + away_team_points + ' - ' + away_team_name_short + ' (' + away_team_record + ')')
-					# elif possession == 'away':
-					# 	print('    ' + home_team_points + ' - ' + home_team_name_short + ' (' + home_team_record + ')')
-					# 	print('<=> ' + away_team_points + ' - ' + away_team_name_short + ' (' + away_team_record + ')')
-					# else:
-					# 	print('    ' + home_team_points + ' - ' + home_team_name_short + ' (' + home_team_record + ')')
-					# 	print('    ' + away_team_points + ' - ' + away_team_name_short + ' (' + away_team_record + ')')
-					# print("      " + clock_text_line + ", " + down_and_distance)
 					last_play = situation["lastPlay"]
-					#print(parse_nested_dict(last_play))
 					last_play_text = last_play["text"]
-					# print("	Last play: " + last_play_text)
 
 					venue_name = venue_info["fullName"]
 					indoor_var = venue_info["indoor"]
@@ -338,8 +326,7 @@ def update_scoreboard(canvas):
 					else:
 						indoor_text = ""
 						add_weather = True
-					# print("	" + venue_name + indoor_text)
-					#add_weather = True
+
 					if add_weather == True:
 						weather = game["weather"]
 						print(weather)
@@ -444,6 +431,10 @@ def update_scoreboard(canvas):
 					completed_games.append(game)
 					print("   " + score_text_line + "\n")
 		
+		else:
+			label_inprog = tk.Label(content_frame, text = "There are no games currently in progress", font=(universal_font, 16, "bold"),
+				anchor='w', bg=standard_bg_color, fg=universal_font_color)
+			label_inprog.pack(fill=tk.X)
 		if completed_games != []:
 			label_line = tk.Label(content_frame, text="______________________________________________________" +
 				"______________________________________________", bg=standard_bg_color, anchor='nw',
@@ -465,10 +456,8 @@ def update_scoreboard(canvas):
 				final_score_text_line = "	" + away_team_name + " " + str(away_score) + \
 						" @ " + str(home_score) + " " + home_team_name
 				label_game_finalscore = tk.Label(content_frame, text = final_score_text_line, 
-					font=(universal_font, 14) ,anchor='w', bg=standard_bg_color, fg=universal_font_color)
+					font=(universal_font, 14, "bold") ,anchor='w', bg=standard_bg_color, fg=universal_font_color)
 				label_game_finalscore.pack(fill=tk.X)
-
-
 
 		if upcoming_games != []:
 			label_line = tk.Label(content_frame, text="______________________________________________________" +
@@ -479,26 +468,45 @@ def update_scoreboard(canvas):
 				anchor = 'w', bg=standard_bg_color, fg=universal_font_color)
 			label_upcoming_str.pack(fill=tk.X)
 			for game in upcoming_games:
+				game_info = game["competitions"][0]
 				kickoff_time = game["date"]
-				kickoff_time_obj = datetime.strptime(kickoff_time, "%Y-%m-%dT%H:%MZ")
+				kickoff_time_obj = datetime.strptime(kickoff_time, "%Y-%m-%dT%H:%M%z")
 				#kickoff_time_obj_et = convert_utc_to_et(kickoff_time_obj)
 				kickoff_time_obj_et = kickoff_time_obj - timedelta(hours=5)
 				kickoff_time_et_str = kickoff_time_obj_et.strftime("%H:%M")
-				game_info = game["competitions"][0]
+
 				tv_channel = game_info["broadcast"]
 				venue_info = game_info["venue"]
+				if "odds" in game_info:
+					add_betting_info = True
+					betting_info = game_info["odds"][0]
+
+					if "moneyline" in betting_info:
+						home_ML = betting_info["moneyline"]["home"]["close"]["odds"]
+					else:
+						home_ML = None
+					if "overUnder" in betting_info:
+						over_under = str(betting_info["overUnder"])
+					else:
+						over_under = None
+					if "details" in betting_info:
+						point_spread = betting_info["details"]
+
+					if home_ML != None:
+						betting_line = ' [' + home_ML + ']'
+					else:
+						betting_line = '' 
+				else:
+					add_betting_info = False
 				venue_name = venue_info["fullName"]
 				indoor_var = venue_info["indoor"]
 				if indoor_var == True:
 					indoor_text = " (Indoors)"
+					add_weather = False
 				else:
 					indoor_text = ""
-				#print("	" + venue_name + indoor_text)
-				game_info = game["competitions"][0]
-				kickoff_time = game["date"]
-				kickoff_time_obj = datetime.strptime(kickoff_time, "%Y-%m-%dT%H:%M%z")
-				status_info = game_info["status"]
-				game_qtr = status_info["period"]
+					add_weather = True
+
 				home_team_info = game_info["competitors"][0]
 				home_score = home_team_info["score"]
 				home_team_name_short = home_team_info["team"]["displayName"]
@@ -508,19 +516,7 @@ def update_scoreboard(canvas):
 				away_score = away_team_info["score"]
 				away_team_name_short = away_team_info["team"]["displayName"]
 				away_team_id = away_team_info["id"]
-
-				game_info = game["competitions"][0]
-				tv_channel = game_info["broadcast"]
-				status_info = game_info["status"]
-				qtr = status_info["period"]
-				clock = status_info["displayClock"]
-				clock_text_line = "Q" + str(qtr) + " " + clock
-				if qtr == 5:
-					clock_text_line = "OT" + " " + clock
-				score_text_line = away_team_name_short + " " + str(away_score) + \
-					" - " + str(home_score) + " " + home_team_name_short
 				
-				venue_info = game_info["venue"]
 				game_state = venue_info["address"]["state"]
 				if game_state in alaska_tz_states:
 					local_offset = -10
@@ -534,9 +530,7 @@ def update_scoreboard(canvas):
 					local_offset = -6
 				elif game_state in eastern_tz_states:
 					local_offset = -5
-				#print("The local time offset is: " + str(local_offset))
 
-				#kickoff_time_obj = kickoff_time_obj(tzinfo=timezone.utc)
 				start_datetime = kickoff_time_obj
 				if kickoff_time_obj > datetime_fall_timechange and kickoff_time_obj <= datetime(current_datetime.year+1,3,1,0,0,0,tzinfo=timezone.utc):
 						ET_offset = -5
@@ -557,69 +551,42 @@ def update_scoreboard(canvas):
 				else:
 					is_it_night = False
 
-				game_info = game["competitions"][0]
-				kickoff_time = game["date"]
-				kickoff_time_obj = datetime.strptime(kickoff_time, "%Y-%m-%dT%H:%M%z")
-				status_info = game_info["status"]
-				game_qtr = status_info["period"]
-				home_team_info = game_info["competitors"][0]
-				home_score = home_team_info["score"]
-				home_team_name_short = home_team_info["team"]["displayName"]
-				home_team_id = home_team_info["id"]
-
-				away_team_info = game_info["competitors"][1]
-				away_score = away_team_info["score"]
-				away_team_name_short = away_team_info["team"]["displayName"]
-				away_team_id = away_team_info["id"]
-
-				game_info = game["competitions"][0]
-				tv_channel = game_info["broadcast"]
-
 				current_datetime_ET = current_datetime + timedelta(hours=ET_offset)
 				if adjusted_start_datetime.day == current_datetime_ET.day:
 					adjusted_start_datetime_text = adjusted_start_datetime.strftime("%-I:%M %p ET")
 				else:
 					adjusted_start_datetime_text = adjusted_start_datetime.strftime("%a. %b. %-d - %-I:%M %p ET")
 				
-				# if add_betting_info == True:
-				# 	label_game_teams = tk.Label(content_frame, text = " " + away_team_rank_str + " " + game.away_team.name + 
-				# 		"  @ " + home_team_rank_str + " " + game.home_team.name + " " + home_team_betting_line_str + " - " + 
-				# 		adjusted_start_datetime_text, anchor='w', fg=universal_font_color, font=(universal_font, 14), bg=standard_bg_color)						
-				# else:
-				label_game_teams = tk.Label(content_frame, text = " " + away_team_name_short + 
-						"  @ " + home_team_name_short + " - " + adjusted_start_datetime_text, 
-						anchor='w', fg=universal_font_color, font=(universal_font, 14), bg=standard_bg_color)
+				if add_betting_info == True:
+					label_game_teams = tk.Label(content_frame, text = " " + away_team_name_short + 
+						" @ " + home_team_name_short + " " + betting_line + " - " + 
+						adjusted_start_datetime_text, anchor='w', fg=universal_font_color, font=(universal_font, 14), bg=standard_bg_color)						
+				else:
+					label_game_teams = tk.Label(content_frame, text = " " + away_team_name_short + 
+							" @ " + home_team_name_short + " - " + adjusted_start_datetime_text, 
+							anchor='w', fg=universal_font_color, font=(universal_font, 14), bg=standard_bg_color)
 				label_game_teams.pack(fill=tk.X)
 				
-				# if game.neutral_site == True:
-				# 	neutral_site_text = '(Neutral site)'
-				# else:
-				neutral_site_text = ''
 				tv_image = Image.open(tv_dir)
 				tv = ImageTk.PhotoImage(tv_image.resize((26, 26), Image.LANCZOS))
 				
-				if tv_channel == None:
-					pass
-				else:
+				if tv_channel != None:
 					label_channel = tk.Label(content_frame, text= ': ' + tv_channel, anchor = 'w', 
 						image = tv, compound=tk.LEFT, font=(universal_font, 13), bg=standard_bg_color, 
 						fg=universal_font_color)
 					label_channel.image = tv
 					label_channel.pack(fill=tk.X, padx=30)
-				label_venue_name = tk.Label(content_frame, text= '		' + venue_name +
-					' ' + neutral_site_text, anchor = 'w', fg=universal_font_color, font=(universal_font, 12), bg=standard_bg_color)
+				
+				if add_betting_info == True:
+					label_betting_info_line = tk.Label(content_frame, text= '		' + point_spread + ', O/U: ' +
+						over_under, anchor = 'w', fg=universal_font_color, 
+						font=(universal_font, 12), bg=standard_bg_color)
+					label_betting_info_line.pack(fill=tk.X)
+
+				label_venue_name = tk.Label(content_frame, text= '		' + venue_name, 
+					anchor = 'w', fg=universal_font_color, font=(universal_font, 12), bg=standard_bg_color)
 				label_venue_name.pack(fill=tk.X)
 
-				venue_name = venue_info["fullName"]
-				indoor_var = venue_info["indoor"]
-				if indoor_var == True:
-					indoor_text = " (Indoors)"
-					add_weather = False
-				else:
-					indoor_text = ""
-					add_weather = True
-				# print("	" + venue_name + indoor_text)
-				#add_weather = True
 				if add_weather == True:
 					weather = game["weather"]
 					#print(weather)
@@ -674,8 +641,7 @@ def update_scoreboard(canvas):
 							+ ' ', anchor = 'nw', 
 							font=(universal_font, 12), bg=standard_bg_color, fg=universal_font_color, image = weather_img, compound=tk.RIGHT)
 					label_weather.image = weather_img
-
-				if indoor_var == True:
+				else:
 					dome_icon = Image.open(dome_icon_path)
 					dome_img = ImageTk.PhotoImage(dome_icon.resize((26, 26), Image.LANCZOS))
 					label_weather = tk.Label(content_frame, text= '		Indoors ', anchor = 'w',
@@ -683,84 +649,6 @@ def update_scoreboard(canvas):
 					label_weather.image = dome_img
 				
 				label_weather.pack(fill=tk.X)
-# print("\n")
-# for game_date in schedule:
-# 	game_day = datetime.strptime(game_date, "%Y%m%d")
-# 	game_day_str = game_day.strftime("%A, %d %B %Y")
-# 	print(game_day_str +":")
-# 	print("________________________________________________")
-# 	games = schedule[game_date]["games"]
-# 	for game in games:
-# 		team_text = game["name"]
-# 		kickoff_time = game["date"]
-# 		kickoff_time_obj = datetime.strptime(kickoff_time, "%Y-%m-%dT%H:%MZ")
-# 		print(team_text)
-# 		#kickoff_time_obj_et = convert_utc_to_et(kickoff_time_obj)
-# 		kickoff_time_obj_et = kickoff_time_obj - timedelta(hours=5)
-# 		kickoff_time_et_str = kickoff_time_obj_et.strftime("%H:%M")
-
-# 		game_info = game["competitions"][0]
-# 		#parse_nested_dict(game_info)
-# 		#print(game_info)
-# 		tv_channel = game_info["broadcast"]
-# 		print("	Kickoff at " + kickoff_time_et_str + " ET on " + tv_channel)
-# 		venue_info = game_info["venue"]
-# 		venue_name = venue_info["fullName"]
-# 		indoor_var = venue_info["indoor"]
-# 		if indoor_var == True:
-# 			indoor_text = " (Indoors)"
-# 		else:
-# 			indoor_text = ""
-# 		print("	" + venue_name + indoor_text)
-# 		#parse_nested_dict(game_info)
-# 		status_info = game_info["status"]
-# 		#parse_nested_dict(status_info)
-# 		qtr = status_info["period"]
-# 		clock = status_info["displayClock"]
-# 		#print(status_info)
-# 		game_status = status_info["type"]["description"]
-# 		if game_status == "Final":
-# 			final_text = " (FINAL)"
-# 		else:
-# 			final_text = ""
-# 		if game_status == "Scheduled":
-# 			display_score = False
-# 			print("")
-# 		else:
-# 			display_score = True
-
-# 		if display_score == True:
-# 			home_team_info = game_info["competitors"][0]
-# 			#parse_nested_dict(home_team_info)
-# 			home_score = home_team_info["score"]
-# 			home_team_name_short = home_team_info["team"]["abbreviation"]
-# 			away_team_info = game_info["competitors"][1]
-# 			#parse_nested_dict(away_team_info)
-# 			away_score = away_team_info["score"]
-# 			away_team_name_short = away_team_info["team"]["abbreviation"]
-# 			clock_text_line = "Q" + str(qtr) + " " + clock
-# 			score_text_line = away_team_name_short + " " + str(away_score) + \
-# 				" - " + str(home_score) + " " + home_team_name_short + final_text
-# 			if game_status != "Final":
-# 				#print(parse_nested_dict(game_info))
-# 				situation = game_info["situation"]
-# 				down_and_distance = situation["downDistanceText"]
-# 				print("	" + down_and_distance)
-# 				#print(parse_nested_dict(situation))
-# 				print("   " + clock_text_line)
-# 				last_play = situation["lastPlay"]
-# 				#print(parse_nested_dict(last_play))
-# 				last_play_text = last_play["type"]["text"]
-# 				print("	Last play: " + last_play_text)
-# 			else:
-# 				print("   " + score_text_line + "\n")
-# 	print("")
-
-# for game in games:
-# 	parse_nested_dict(game)
-# 	team_text = game["name"]
-
-# 	print(team_text)
 
 
 alaska_tz_states = ['AK']
@@ -811,24 +699,3 @@ canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 refresh_canvas(canvas)
 
 rootapp.mainloop()
-
-first_game_of_season = datetime(2025, 9, 3, 0, 0, 0, tzinfo=timezone.utc)
-now_date = datetime.now(timezone.utc)
-nfl_week = count_weeks_between_dates(first_game_of_season, now_date) + 1
-year = now_date.year
-url = "https://cdn.espn.com/core/nfl/schedule?xhr=1&year=" + str(year) + "&week=" + str(nfl_week)
-
-try:
-	response = requests.get(url)
-	response.raise_for_status()
-	#print(response.text)
-except requests.exceptions.RequestException as e:
-	print("Error making request: " + e)
-
-json_data = response.json()
-schedule = json_data["content"]["schedule"]
-
-
-
-# print("The current games are:")
-# print(current_scoreboard)
