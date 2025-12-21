@@ -259,12 +259,12 @@ def update_scoreboard(canvas):
 			kickoff_time = game["date"]
 			kickoff_time_obj = datetime.strptime(kickoff_time, "%Y-%m-%dT%H:%MZ")
 			kickoff_time_obj = kickoff_time_obj.replace(tzinfo=timezone.utc)
+			game_info = game["competitions"][0]
+			status_info = game_info["status"]
+			game_status = status_info["type"]["description"]
 			if kickoff_time_obj > current_datetime:
 				upcoming_games.append(game)
 			else:
-				game_info = game["competitions"][0]
-				status_info = game_info["status"]
-				game_status = status_info["type"]["description"]
 				if game_status == "Final":
 					completed_games.append(game)
 				else:
@@ -362,6 +362,7 @@ def update_scoreboard(canvas):
 				else:
 					is_it_night = False
 				char_limit = 50
+
 				if game_status != "Final":
 					if "situation" in game_info:
 						situation = game_info["situation"]
@@ -444,8 +445,8 @@ def update_scoreboard(canvas):
 					char_limit = 50
 					away_team_name_length = len(away_team_name_short)
 					home_team_name_length = len(home_team_name_short)
-					num_away_spaces = char_limit - away_team_name_length
-					num_home_spaces = char_limit - (home_team_name_length +6)
+					num_away_spaces = char_limit - (away_team_name_length + 5)
+					num_home_spaces = char_limit - (home_team_name_length + 0)
 
 					if possession == 'away':
 						#num_away_spaces += -15
@@ -503,7 +504,7 @@ def update_scoreboard(canvas):
 						label_weather.pack(fill=tk.X)
 				else:
 					completed_games.append(game)
-					print("   " + score_text_line + "\n")
+					#print("   " + score_text_line + "\n")
 		
 		else:
 			label_inprog = tk.Label(content_frame, text = "There are no games currently in progress", font=(universal_font, 16, "bold"),
